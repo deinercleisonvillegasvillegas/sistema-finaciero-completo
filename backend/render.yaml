@@ -1,0 +1,32 @@
+# CONFIGURACIÓN RENDER.COM
+# Deploy automático del backend
+
+services:
+  # API Principal
+  - type: web
+    name: financial-intelligence-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: PORT
+        value: 8000
+    healthCheckPath: /health
+    
+  # Scraper automático (cron job cada hora)
+  - type: cron
+    name: scraper-hourly
+    env: python
+    schedule: "0 * * * *"  # Cada hora
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -c "import asyncio; from scrapers.bcrp_scraper import BCRPScraper; from scrapers.investing_scraper import InvestingScraper; from scrapers.minagri_scraper import MinagriScraper; async def run(): bcrp = BCRPScraper(); investing = InvestingScraper(); minagri = MinagriScraper(); await bcrp.update_tipo_cambio(); await investing.update_all_commodities(); await minagri.update_precios(); asyncio.run(run())"
+
+# Base de datos (opcional - usar servicio externo)
+databases:
+  - name: financial-db
+    databaseName: financial_intelligence
+    plan: free
